@@ -1,7 +1,11 @@
+#!pip install pymssql
+#!pip install transformers
 import pymssql
 from transformers import AutoModelForSequenceClassification
 import torch
 import numpy as np
+import copy
+
 SERVER = '192.168.0.247\SOLUTIIONWEB'
 DATABASE = 'Solutiion'
 USERNAME = 'sa'
@@ -9,7 +13,8 @@ PASSWORD = 'M0r3n02800!'
 USER = 'sa'
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = AutoModelForSequenceClassification.from_pretrained("VCNC/bert_2").to(device)
+model_pr = AutoModelForSequenceClassification.from_pretrained("VCNC/bert_3").to(device)
+model_pi = AutoModelForSequenceClassification.from_pretrained("VCNC/bert_piezas").to(device)
 
 #La función preprocess una vez entrada una lista con la descripción de los productos logra preprocesar la entrada para BERT
 def preprocess(input:list[str], tokens):
@@ -23,11 +28,8 @@ def preprocess(input:list[str], tokens):
             else:
                 processed[i] = tokens['OTHER']
     return torch.tensor(np.asarray([processed]))
-
-            
 def get_producto(machine):
 ################################### SQL CONNECTION #########################
-
     conn = pymssql.connect(server=SERVER, database=DATABASE, user=USER, password=PASSWORD)
     cursor = conn.cursor()
     sql_select =  f'''select DISTINCT
@@ -54,7 +56,7 @@ ORDER BY FE_EMIT ASC'''
             lista.append('2800')
         if row[0] == '1805' :
             lista.append('1800')
-            
+
 
         else:
             if row[0] != None :
@@ -63,7 +65,7 @@ ORDER BY FE_EMIT ASC'''
         if row[0] in tokens:
             lista.append(row[0])
         else:
-            lista.append("OTHER")        
+            lista.append("OTHER")
     # Commit the changes to the database
     conn.commit()
 
@@ -75,10 +77,10 @@ ORDER BY FE_EMIT ASC'''
 def inferencia_producto(lista):
     tokens = {"OTHER": 0, "1200": 1, "1300": 2, "1400": 3, "1600": 4, "1700": 5, "1800": 6, "1900": 7, "2100": 8, "2400": 9, "2405": 9, "2600": 10, "2800": 11, "2805": 11, "AR": 12}
     input_list = lista.copy()  # Create a copy of the input list
-    
+
     input_ids = preprocess(input_list, tokens).to(device)
-    
-    output = model(input_ids)['logits']
+
+    output = model_pr(input_ids)['logits']
 
     mask = torch.full_like(output, -40)  # Initialize the mask with -5
 
@@ -95,7 +97,7 @@ def inferencia_producto(lista):
         if index == max_index:
             max_label = label
             break
-        
+
     # Create a new list to store removed elements
     output_list = []
     removed_count = 0  # Counter to track the number of removed elements
@@ -115,23 +117,23 @@ def inferencia_producto(lista):
             if element in lista:
                 lista.remove(element)
                 output_list.append(element)
-                
+
     print("Max Index:", max_index)
     print("Max Label:", max_label)
     print(f'lista: {lista}')
     print(f'mask: {mask}')
     print(f'output: {output}')
-    
+
     return output_list
 
 
 def get_piezas(machine):
 ################################### SQL CONNECTION #########################
-    conn = pymssql.connect(server=SERVER, database=DATABASE, user=USER, password=PASSWORD)
+    """conn = pymssql.connect(server=SERVER, database=DATABASE, user=USER, password=PASSWORD)
     cursor = conn.cursor()
     sql_select =  f'''
    SELECT
-    CASE 
+    CASE
         WHEN C.DES_PROD LIKE '%TUERCA RETEN%' THEN 'TUERCA'
         WHEN C.DES_PROD LIKE '%CAPUCHON%' THEN 'CAPUCHON'
         WHEN C.DES_PROD LIKE '%CUERPO%' THEN 'CUERPO'
@@ -157,12 +159,12 @@ def get_piezas(machine):
 
 	C.CG_ORDF,
 	P.FE_EMIT
-FROM 
+FROM
     cargamaq2 C
 JOIN PROGRAMA P ON C.CG_ORDF = P.CG_ORDF
-WHERE 
+WHERE
     C.CG_CELDA LIKE '%{machine}%' and estado = 0
-ORDER BY 
+ORDER BY
     P.FE_EMIT ASC;
     '''
     cursor.execute(sql_select)
@@ -175,9 +177,9 @@ ORDER BY
     conn.commit()
 
     # Close the connection
-    conn.close()
+    conn.close()"""
+    lista = ['CAPUCHON','CAPUCHON','BONETE','CUERPO','CABEZA','BONETE','TORN','CUERPO','BUJE','TORN','BUJE','CABEZA','BONETE','OTHER']
     return lista
-
 
 def inferencia_piezas(lista):
     tokens = {
@@ -206,12 +208,12 @@ def inferencia_piezas(lista):
     "CAJA": 18,
     "OBTURADOR": 19,
 }
-    input_list = lista  # Create a copy of the input list
+    input_list = copy.deepcopy(lista)  # Create a copy of the input list
 
     input_ids = preprocess(lista, tokens).to(device)
+    print(input_ids)
 
-    output = model(input_ids)['logits']
-    output_list = []
+    output = model_pi(input_ids)['logits']
     print(f'lista: {lista}')
 
     mask = torch.full_like(output, -40)  # Initialize the mask with -5
@@ -229,29 +231,32 @@ def inferencia_piezas(lista):
         if index == max_index:
             max_label = label
             break
-        
+
     # Create a new list to store removed elements
 
     removed_count = 0  # Counter to track the number of removed elements
     max_removal_limit = 15  # Maximum number of elements to remove
 
-    for element in input_list:
-        if element == max_label and removed_count < max_removal_limit:  # Check if we haven't reached the removal limit
-            if element in lista:  # Check if the element is still in the original list
-                lista.remove(element)  # Remove the element from the original list
-                output_list.append(element)  # Keep the rest of the elements
+    output_list = []
+
+    for i in range(len(input_ids[0])):
+        if input_ids[0, i] == max_index and removed_count < max_removal_limit:  # Check if we haven't reached the removal limit
+            if input_ids[0, i] in input_ids:  # Check if the element is still in the original list
+                output_list.append(lista[i])  # Keep the rest of the elements
+                input_list.pop(i-removed_count)  # Remove the element from the original list
                 removed_count += 1  # Increment the removed_count
-                
+
     print("Max Index:", max_index)
     print("Max Label:", max_label)
-    print(f'mask: {mask}')
-    print(f'output: {output}')
-    
+    print(f'Mask: {mask}')
+    print(f'Output: {output}')
+    print('Lista output: ', output_list)
+    print('Lista actualizada: ', input_list)
 
-    return output_list
+
+    return output_list, input_list
 
 
-  
 def main():
     global machine
 
@@ -263,7 +268,7 @@ def main():
         print(prod_inicial)
         output_prod_accumulated = []
         salida_sql = []
-        
+
         while prod_inicial:
              prod_final = inferencia_producto(prod_inicial)
              output_prod_accumulated.extend(prod_final)
@@ -273,23 +278,24 @@ def main():
                  salida_sql.append((producto, machine))
 
         print("output_list:", output_prod_accumulated)
-        
+
     else:
         lista_inicial = get_piezas(machine)
         print(lista_inicial)
         output_list_accumulated = []
         salida_sql = []
+        lista_piezas = lista_inicial
 
-        while lista_inicial:
-             lista_final = inferencia_piezas(lista_inicial)
-             output_list_accumulated.extend(lista_final)
+        while len(lista_piezas):
+             lista_salida, lista_piezas = inferencia_piezas(lista_piezas)
+             output_list_accumulated.extend(lista_salida)
      # Insert each element from lista_final into the PROD_PLAN table
-             for pieza in lista_final:
+             for pieza in lista_salida:
                 #insert_sql(pieza,machine)
                 salida_sql.append((pieza, machine))
 
         print("output_list:", output_list_accumulated)
 
-            
+
 if __name__ == "__main__":
     main()
