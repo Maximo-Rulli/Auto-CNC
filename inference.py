@@ -1,10 +1,10 @@
 #!pip install pymssql
 #!pip install transformers
+
 import pymssql
 from transformers import AutoModelForSequenceClassification
 import torch
 import numpy as np
-import copy
 
 SERVER = '192.168.0.247\SOLUTIIONWEB'
 DATABASE = 'Solutiion'
@@ -28,6 +28,7 @@ def preprocess(input:list[str], tokens):
             else:
                 processed[i] = tokens['OTHER']
     return torch.tensor(np.asarray([processed]))
+
 def get_producto(machine):
 ################################### SQL CONNECTION #########################
     conn = pymssql.connect(server=SERVER, database=DATABASE, user=USER, password=PASSWORD)
@@ -208,7 +209,8 @@ def inferencia_piezas(lista):
     "CAJA": 18,
     "OBTURADOR": 19,
 }
-    input_list = copy.deepcopy(lista)  # Create a copy of the input list
+    input_list = np.copy(lista)  # Create a copy of the input list
+    input_list = input_list.tolist()
 
     input_ids = preprocess(lista, tokens).to(device)
     print(input_ids)
@@ -256,7 +258,6 @@ def inferencia_piezas(lista):
 
     return output_list, input_list
 
-
 def main():
     global machine
 
@@ -299,3 +300,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
