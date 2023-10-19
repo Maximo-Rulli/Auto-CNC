@@ -6,7 +6,10 @@ from transformers import AutoModelForSequenceClassification
 #Declaramos como constantes los diccionarios con los tokens y las conversiones
 PROD_TOK = {"OTHER": 0, "1200": 1, "1300": 2, "1400": 3, "1600": 4, "1700": 5, "1800": 6, "1900": 7, "2100": 8, "2400": 9, "2405": 9, "2600": 10, "2800": 11, "2805": 11, "AR": 12}
 
-PIEZ_TOK = {"OTHER":0,"CAPUCHON": 1,"CUERPO": 2,"CPO": 2,"BONETE": 3,"ANILLO": 4,"DISCO": 5,"CPO.TOB": 6,"CPO TOB": 6,"CONTRATUERCA": 7,"TOBERA": 8,"BUJE": 5,"GUIA": 10, "GUÍA": 10, "RETEN": 11,"VASTAGO": 12,"VAST": 12,"TORN": 13,"PORTADISCO": 14,"TUERCA": 15,"CABEZA": 16,"APOYO": 17,"CAJA": 18,"OBTURADOR": 19,}
+PIEZ_TOK = {"OTHER":0,"CAPUCHON": 1,"CUERPO": 2,"CPO": 2,"BONETE": 3,"ANILLO": 4,"DISCO": 5,"CPO.TOB": 6,"CPO TOB": 6,"CONTRATUERCA": 7,"TOBERA": 8,"BUJE": 5,"GUIA": 10, "GUÍA": 10, "RETEN": 11,"VASTAGO": 12,"VAST": 12,"TORN": 13,"PORTADISCO": 14,"TUERCA": 15,"CABEZA": 16,"APOYO": 17,"CAJA": 18,"OBTURADOR": 19}
+
+#Este diccionario es un auxiliar en el que no hay piezas repetidas
+AUX_TOK = {"OTHER":0,"CAPUCHON": 1,"CUERPO": 2,"BONETE": 3,"ANILLO": 4,"DISCO": 5,"CPO TOB": 6,"CONTRATUERCA": 7,"TOBERA": 8,"BUJE": 5,"GUIA": 10, "RETEN": 11, "VASTAGO": 12, "TORN": 13, "PORTADISCO": 14, "TUERCA": 15, "CABEZA": 16, "APOYO": 17, "CAJA": 18, "OBTURADOR": 19}
 
 #La función preprocess pasa de secuencia de texto a tokens
 def preprocess(input:list[str], tokens:dict):
