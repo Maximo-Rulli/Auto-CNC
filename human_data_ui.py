@@ -11,7 +11,10 @@ with gr.Blocks() as my_demo:
     gr.Markdown("# Generador de datasets supervisados por humano con Gradio")
     choice = gr.Radio(['Piezas', 'Productos'], value='Piezas', label="Elija que tipo de dataset se generará:")
     options = gr.Radio([i for i in list(AUX_TOK.keys())], label="Elija la pieza a producir:", interactive=True)
-    log = []
+    
+    #Se crea un dataframe para guardar los ejemplos de entrenamiento
+    df = pd.DataFrame(data={'Input_seq':[None],'Output':[None],'Type':[None]})
+    
     #Esta función genera una secuencia de piezas o productos aleatoriamente
     def generate(option:str):
         global out_seq
@@ -39,10 +42,11 @@ with gr.Blocks() as my_demo:
         return options
 
     def save(option:str, selected:str):
-        global log
         global out_seq
-        log.append((option, out_seq, selected))
-        return log
+        global df
+        row = pd.Series([out_seq, selected, option], index=df.columns)
+        df = df.append(row)
+        return df
         
     #El generator es simplemente para que cada vez que el usuario le de click se genere la secuencia
     generator = gr.Interface(generate, choice, 'text')
